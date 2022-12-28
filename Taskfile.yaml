@@ -70,8 +70,8 @@ tasks:
   trivy:
     desc: Scan the whole code repository for vulnerabilities and misconfigurations.
     cmds:
-      - trivy fs {{.git_root}} --no-progress --skip-dirs ./.idea --skip-dirs ./vendor --exit-code 1
-      - trivy config {{.git_root}} --severity HIGH,CRITICAL,MEDIUM,LOW --skip-dirs ./vendor --exit-code 1
+      - trivy fs {{.git_root}} --no-progress --skip-dirs ./.idea --skip-dirs ./vendor --exit-code 1 --debug
+      - trivy config {{.git_root}} --severity HIGH,CRITICAL,MEDIUM,LOW --skip-dirs ./vendor --exit-code 1 --debug
 
   test:
     desc: Run tests

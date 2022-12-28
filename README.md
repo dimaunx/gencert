@@ -4,8 +4,8 @@
 
 ### Simple certificate generation tool for testing.
 
-This tool was created to quickly generate certificates and chains for local development and testing.
-The generated files are useful when we need to write tests for code that deals with certificate chains and their verification.
+This tool was originally created to quickly generate certificate chains for local development and testing.
+The generated files are especially useful when testing code that deals with certificate chains and their verification.
 
 ### Prerequisites for local development.
 
@@ -20,9 +20,14 @@ The generated files are useful when we need to write tests for code that deals w
 - [golangci-lint] or task install/lint
 - [trivy] or task install/trivy
 
-### Build.
+### Installation
+
+Binaries for Linux, Windows and Mac are available as tarballs on the [release] page.
+
+### Build on Mac or Linux.
 
 ```
+sh -c "$(curl -sL https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
 git clone https://github.com/dimaunx/gencert.git
 cd gencert
 task build
@@ -37,21 +42,45 @@ gencert create -h
 ### Usage.
 
 ```shell
-gencert create
+gencert create -v
 ```
 
 Above command is equivalent to:
 
 ```shell
-gencert create --path ca01 --can-cn ca01 --ca-days 365 --int-num 1 --int-hierarchy forest --int-days 364 --cert-cn test.example.com --cert-days 363
+gencert create -v --path ca01 --can-cn ca01 --ca-days 365 --int-num 1 --int-hierarchy forest --int-days 364 --cert-cn test.example.com --cert-days 363
 ```
 
-The command will generate locally in `ca01` folder a Root CA, intermediate CA, leaf certificate and export the CA chain.
+The command will generate in a local `ca01` folder a root CA, intermediate CA, one leaf client/server certificate
+and export the CA chain to a file in PEM format. The chain file will not include the client/server certificate,
+only root and intermediate CA certificates.
 
 The chain can be verified with:
 
 ```shell
 openssl verify -CAfile ca01/ca-chain.cert ca01/test.example.com.cert
+```
+
+The folder will also contain CA private keys. These keys can be used to generate more certificates with `openssl`
+command if required. It is recommended to sign the leaf certificate with the intermediate keys and not with the
+root certificate keys.
+
+```shell
+openssl req -new -nodes -out ca01/test.local.csr -newkey rsa:2048 -keyout ca01/test.local.key -subj '/C=US/L=Los Angeles/O=Example/OU=Example/CN=test.local'
+cat > ca01/test.local_v3_ext << EOF
+authorityKeyIdentifier=keyid,issuer
+basicConstraints=CA:FALSE
+keyUsage = digitalSignature, nonRepudiation, keyEncipherment, dataEncipherment
+subjectAltName = @alt_names
+[alt_names]
+DNS.1 = test.test.local
+DNS.2 = www.test.local
+IP.1 = 192.168.1.1
+IP.2 = 192.168.2.1
+EOF
+openssl x509 -req -in ca01/test.local.csr -CA ca01/ca01-int01.cert -CAkey ca01/ca01-int01.key -CAcreateserial -out ca01/test.local.cert -days 7 -sha256 -extfile ca01/test.local_v3_ext
+openssl x509 -noout -text -in ca01/test.local.cert # view the certificate
+openssl verify -CAfile ca01/ca-chain.cert ca01/test.local.cert # verify chain
 ```
 
 ### Advanced usage.
@@ -60,15 +89,15 @@ openssl verify -CAfile ca01/ca-chain.cert ca01/test.example.com.cert
 gencert create --path ca02 --ca-cn ca02 --ca-days 7 --int-num 2 --int-hierarchy ladder --int-days 6 --cert-cn test.test.com --cert-days 5
 ```
 
-* --path - Location for the generated certificates, relative to the folder that the `gencert` binary was executed from.
+* --path - Location for the generated files, relative to the folder that the `gencert` binary was executed from.
 * --ca-cn - Root CA common name.
 * --ca-days - Root CA duration in days.
 * --int-num - Number of intermediate certificates to generate. If `0` is used no intermediates will be generated.
-* --int-hierarchy - can be `forest` or `ladder`. Ladder mean that each intermediate (if more than one requested)
-  will be signed by a previous intermediate. Forest means that all intermediates are signed by the root CA.
+* --int-hierarchy - Can be `forest` or `ladder`. `ladder` means that each intermediate (if more than one requested)
+  will be signed by a previous intermediate. `forest` means that all intermediates are signed by the same root CA.
 * --int-days - Intermediate certificates duration in days.
-* --cert-cn - Server leaf certificate common name.
-* --cert-days - Server leaf certificate duration in days.
+* --cert-cn - Client/Server leaf certificate common name.
+* --cert-days - Client/Server leaf certificate duration in days.
 
 The chain can be verified with:
 
@@ -76,7 +105,7 @@ The chain can be verified with:
 openssl verify -CAfile ca02/ca-chain.cert ca02/test.test.com.cert
 ```
 
-### Forest vs ladder.
+### forest vs ladder.
 
 ![forest vs Ladder](images/hierarchy.png?raw=true "Hierarchy")
 
@@ -91,6 +120,12 @@ task -l
 ```shell
 task test
 task cover
+```
+
+### Run linter.
+
+```shell
+task lint
 ```
 
 ### Run `gofumpt` with fixes.
@@ -112,6 +147,8 @@ task trivy
 ```
 
 <!--links-->
+
+[release]: https://github.com/dimaunx/gencert/releases
 
 [task]: https://taskfile.dev/installation/
 

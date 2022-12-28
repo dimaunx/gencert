@@ -53,7 +53,7 @@ var (
 			logger := zerolog.New(os.Stdout).With().Stack().Timestamp().Logger()
 
 			if err := utils.CreateDir(path); err != nil {
-				logger.Error().Err(err).Msgf("failed created local directory %s", path)
+				logger.Error().Err(err).Msgf("failed to create a local directory %s", path)
 				return err
 			}
 			logger.Debug().Msgf("Successfully created local directory %s", path)
@@ -70,7 +70,7 @@ var (
 				return err
 			}
 			certs = append(certs, root)
-			logger.Debug().Msgf("Generated successfully a Root CA cn: %s  location: %s", caCn, root.FileName)
+			logger.Debug().Msgf("Successfully generated a root CA cn: %s location: %s", caCn, root.FileName)
 
 			for i := 0; i < numIntermediates; i++ {
 				// Auto generate names for the intermediate certificates.
@@ -92,8 +92,9 @@ var (
 						return err
 					}
 					certs = append(certs, out)
-					logger.Debug().Msgf("Generated successfully an intermediate CA cn: %s  location: %s", cn, out.FileName)
+					logger.Debug().Msgf("Successfully generated an intermediate CA cn: %s location: %s", cn, out.FileName)
 				case "ladder":
+					// Sign the first intermediate with the root CA.
 					input := &cert.GenCertInput{
 						Type:             "intermediate",
 						CommonName:       cn,
@@ -109,14 +110,13 @@ var (
 						input.IssuerPrivateKey = certs[i].PrivateKey
 					}
 
-					// If the intermediate is the first one in the chain sign it with the root CA.
 					out, err := cert.GenCert(input)
 					if err != nil {
 						logger.Error().Err(err).Msgf("failed to generate an intermediate CA cn: %s", cn)
 						return err
 					}
 					certs = append(certs, out)
-					logger.Debug().Msgf("Generated successfully an intermediate CA cn: %s  location: %s", cn, out.FileName)
+					logger.Debug().Msgf("Successfully generated an intermediate CA cn: %s location: %s", cn, out.FileName)
 				default:
 					return errors.Errorf("unsupported intermediate hierarchy type: %s", intermediatesHierarchy)
 				}
@@ -133,17 +133,17 @@ var (
 				IssuerPrivateKey: last.PrivateKey,
 			})
 			if err != nil {
-				logger.Error().Err(err).Msgf("failed to generate an server certificate cn: %s", certCn)
+				logger.Error().Err(err).Msgf("failed to generate a client/server certificate cn: %s", certCn)
 				return err
 			}
-			logger.Debug().Msgf("Generated successfully a client/server certificate cn: %s  location: %s", certCn, out.FileName)
+			logger.Debug().Msgf("Successfully generated a client/server certificate cn: %s location: %s", certCn, out.FileName)
 
-			// Export the CA chain to a file. Chain will contain root and all the intermediate certificates only.
+			// Export the CA chain to a file. The chain will contain root and all the intermediate certificates only.
 			if err = cert.ExportPemChain(certs, path, "ca-chain.cert"); err != nil {
 				logger.Error().Err(err).Msg("failed to to export the CA chain")
 				return err
 			}
-			logger.Debug().Msgf("Exported successfully a CA chain to: %s", filepath.Join(path, "ca-chain.cert"))
+			logger.Debug().Msgf("Successfully exported the CA chain to: %s", filepath.Join(path, "ca-chain.cert"))
 			return nil
 		},
 	}

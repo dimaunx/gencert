@@ -24,15 +24,15 @@ type GenCertInput struct {
 	Dir string
 	// DaysDuration is the target's duration in days.
 	DaysDuration int
-	// Type can be on of root,intermediate or leaf.
+	// Type can be one of root,intermediate or leaf.
 	Type string
 	// IssuerCert is the issuer certificate that is signing the target certificate.
 	IssuerCert *x509.Certificate
-	// IssuerPrivateKey is the issuer certificate private key.
+	// IssuerPrivateKey is the issuer private key.
 	IssuerPrivateKey *rsa.PrivateKey
 }
 
-// GenCertOutput represent the output after certificate generation.
+// GenCertOutput represent the output after successful certificate generation.
 type GenCertOutput struct {
 	// Certificate represents x509 certificate.
 	Certificate *x509.Certificate
@@ -141,6 +141,7 @@ func GenCert(input *GenCertInput) (*GenCertOutput, error) {
 		return nil, err
 	}
 
+	// If we are creating a root CA, issuer and issuerPk are its own certificate and private key.
 	issuer := crt
 	if input.IssuerCert != nil {
 		issuer = input.IssuerCert
