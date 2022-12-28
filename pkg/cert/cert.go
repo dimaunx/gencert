@@ -46,7 +46,7 @@ func ExportPemChain(certs []*GenCertOutput, dir, name string) error {
 		buf.Write(b)
 	}
 
-	if err := os.WriteFile(filepath.Join(dir, name), buf.Bytes(), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, name), buf.Bytes(), 0o600); err != nil {
 		return err
 	}
 	return nil

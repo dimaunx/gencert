@@ -1,9 +1,10 @@
 package utils
 
 import (
-	"github.com/pkg/errors"
 	"os"
 	"path/filepath"
+
+	"github.com/pkg/errors"
 )
 
 // CreateDir creates a local directory for certificates.

@@ -1,0 +1,102 @@
+version: '3'
+
+vars:
+  git_root:
+    sh: git rev-parse --show-toplevel
+  test_dir: pkg
+  trivy_version: v0.35.0
+  golangci_lint_version: v1.50.1
+
+tasks:
+  default:
+    cmds:
+      - echo "Please enter a task name or use -l or --list-all to list all available tasks"
+    silent: true
+    desc: Default task.
+
+  install/lint:
+    desc: Install golangci-lint.
+    cmds:
+      - sudo curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sudo sh -s -- -b /usr/local/bin {{.golangci_lint_version}}
+      - golangci-lint version
+    sources:
+      - /usr/local/bin/golangci-lint
+
+  install/trivy:
+    desc: Install trivy security scanner.
+    cmds:
+      - curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin {{.trivy_version}}
+      - trivy version
+    sources:
+      - /usr/local/bin/trivy
+
+  cleanup:
+    desc: Project cleanup.
+    cmds:
+      - docker rm -f redis-commander kafka-ui k3d-cluster1-serverlb k3d-cluster1-server-0 &> /dev/null
+      - docker-compose down -v &> /dev/null
+      - docker volume rm $(docker volume ls -qf dangling=true) &> /dev/null
+      - rm -rf {{.git_root}}/localstack
+      - find {{.git_root}} -type d -iname "*.terraform" | xargs -r rm -r
+      - find {{.git_root}} -iname ".terraform.*" | xargs -r rm -r
+      - find {{.git_root}} -iname "creds.json" | xargs -r rm -r
+      - find {{.git_root}} -iname "rid" | xargs -r rm -r
+      - find {{.git_root}} -iname "sid" | xargs -r rm -r
+    ignore_error: true
+    silent: true
+
+  lint:
+    desc: Run golangci-lint linter.
+    deps:
+      - vendor
+    cmds:
+      - golangci-lint run pkg/... -v --timeout=15m
+
+  gofumpt:
+    desc: Enforce a stricter format than gofmt, while being backwards compatible. Auto fixes issues.
+    cmds:
+      - gofumpt -l -w .
+
+  goimports:
+    desc: Format and fix all go imports.
+    cmds:
+      - goimports -w -local github.com/dimaunx/gencert $(find {{.git_root}} -type f -name '*.go' -not -path "{{.git_root}}/vendor/*")
+
+  vendor:
+    desc: Run go mod vendor.
+    cmds:
+      - |
+        echo Running vendor...
+        if [ -d "{{.git_root}}/vendor" ]; then
+          echo "{{.git_root}}/vendor folder already exists"
+          cd {{.git_root}} && go mod tidy
+        else
+          cd {{.git_root}} && go mod tidy && go mod vendor
+        fi
+    silent: true
+
+  trivy:
+    desc: Scan the whole code repository for vulnerabilities and misconfigurations.
+    cmds:
+      - trivy fs {{.git_root}} --no-progress --skip-dirs ./.idea --skip-dirs ./vendor --exit-code 1
+      - trivy config {{.git_root}} --severity HIGH,CRITICAL,MEDIUM,LOW --skip-dirs ./vendor --exit-code 1
+
+  test:
+    desc: Run tests
+    cmds:
+      - defer: { task: cleanup }
+      - cmd: echo Running tests on {{OS}} {{ARCH}}...
+        silent: true
+      - go test -parallel=4 -shuffle=on {{.git_root}}/{{.test_dir}}/... -cover -coverprofile={{.git_root}}/coverage.out
+
+  cover:
+    desc: Show code coverage in a browser.
+    cmds:
+      - go tool cover -html={{.git_root}}/coverage.out
+
+  build:
+    desc: Build the binary
+    deps:
+      - vendor
+    cmds:
+      - go build -o gencert

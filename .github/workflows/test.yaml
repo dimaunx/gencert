@@ -1,0 +1,38 @@
+name: Test
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - 'LICENSE'
+  pull_request:
+jobs:
+  test:
+    name: Test
+    runs-on: ${{ matrix.operating-system }}
+    strategy:
+      matrix:
+        operating-system: [ ubuntu-latest, macos-latest ]
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install go
+        uses: actions/setup-go@v3
+        with:
+          go-version-file: go.mod
+      - name: Install tools
+        run: |
+          sh -c "$(curl -sL https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin v3.19.0
+          task --version
+          task install/trivy
+      - name: Run vendor
+        run: task vendor
+      - name: Run linter
+        uses: golangci/golangci-lint-action@v3.3.0
+        with:
+          version: v1.50.1
+          args: --deadline=15m
+          skip-cache: true
+      - name: Run trivy
+        run: task trivy
+      - name: Run tests
+        run: task test

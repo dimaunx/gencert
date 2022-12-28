@@ -2,10 +2,12 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/dimaunx/gencert/pkg/cert"
-	"github.com/dimaunx/gencert/pkg/utils"
+
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
+
+	"github.com/dimaunx/gencert/pkg/cert"
+	"github.com/dimaunx/gencert/pkg/utils"
 )
 
 func init() {
