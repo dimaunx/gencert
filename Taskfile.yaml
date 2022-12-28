@@ -33,15 +33,7 @@ tasks:
   cleanup:
     desc: Project cleanup.
     cmds:
-      - docker rm -f redis-commander kafka-ui k3d-cluster1-serverlb k3d-cluster1-server-0 &> /dev/null
-      - docker-compose down -v &> /dev/null
-      - docker volume rm $(docker volume ls -qf dangling=true) &> /dev/null
-      - rm -rf {{.git_root}}/localstack
-      - find {{.git_root}} -type d -iname "*.terraform" | xargs -r rm -r
-      - find {{.git_root}} -iname ".terraform.*" | xargs -r rm -r
-      - find {{.git_root}} -iname "creds.json" | xargs -r rm -r
-      - find {{.git_root}} -iname "rid" | xargs -r rm -r
-      - find {{.git_root}} -iname "sid" | xargs -r rm -r
+      - find {{.git_root}} -type d -iname "*tmp*" | xargs -r rm -r
     ignore_error: true
     silent: true
 

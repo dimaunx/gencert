@@ -2,12 +2,17 @@ package cmd
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"github.com/dimaunx/gencert/pkg/cert"
 	"github.com/dimaunx/gencert/pkg/utils"
+
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/pkgerrors"
 )
 
 func init() {
@@ -39,16 +44,33 @@ var (
 		Short: "Generate CA/Intermediate and leaf certificates",
 		Long:  `Generate CA/Intermediate and leaf certificates`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			zerolog.SetGlobalLevel(zerolog.InfoLevel)
+
+			if debug {
+				zerolog.SetGlobalLevel(zerolog.DebugLevel)
+			}
+			zerolog.ErrorStackMarshaler = pkgerrors.MarshalStack
+			logger := zerolog.New(os.Stdout).With().Stack().Timestamp().Logger()
+
 			if err := utils.CreateDir(path); err != nil {
+				logger.Error().Err(err).Msgf("failed created local directory %s", path)
 				return err
 			}
+			logger.Debug().Msgf("Successfully created local directory %s", path)
 
 			var certs []*cert.GenCertOutput
-			root, err := cert.GenRootCA(caCn, path, caDays)
+			root, err := cert.GenCert(&cert.GenCertInput{
+				Type:         "root",
+				CommonName:   caCn,
+				Dir:          path,
+				DaysDuration: caDays,
+			})
 			if err != nil {
+				logger.Error().Err(err).Msg("failed to generate root CA")
 				return err
 			}
 			certs = append(certs, root)
+			logger.Debug().Msgf("Generated successfully a Root CA cn: %s  location: %s", caCn, root.FileName)
 
 			for i := 0; i < numIntermediates; i++ {
 				// Auto generate names for the intermediate certificates.
@@ -57,27 +79,44 @@ var (
 				switch intermediatesHierarchy {
 				case "forest":
 					// Sign all intermediate certificates with the root CA.
-					out, err := cert.GenIntermediateCA(root.Certificate, root.PrivateKey, cn, path, intermediateDays)
+					out, err := cert.GenCert(&cert.GenCertInput{
+						Type:             "intermediate",
+						CommonName:       cn,
+						Dir:              path,
+						DaysDuration:     intermediateDays,
+						IssuerCert:       root.Certificate,
+						IssuerPrivateKey: root.PrivateKey,
+					})
 					if err != nil {
+						logger.Error().Err(err).Msgf("failed to generate an intermediate CA cn: %s", cn)
 						return err
 					}
 					certs = append(certs, out)
+					logger.Debug().Msgf("Generated successfully an intermediate CA cn: %s  location: %s", cn, out.FileName)
 				case "ladder":
-					if i == 0 {
-						// If the intermediate is the first one in the chain sign it with the root CA.
-						out, err := cert.GenIntermediateCA(root.Certificate, root.PrivateKey, cn, path, intermediateDays)
-						if err != nil {
-							return err
-						}
-						certs = append(certs, out)
-					} else {
-						// If the intermediate is not the first one in the chain sign it with the previous one.
-						out, err := cert.GenIntermediateCA(certs[i].Certificate, certs[i].PrivateKey, cn, path, intermediateDays)
-						if err != nil {
-							return err
-						}
-						certs = append(certs, out)
+					input := &cert.GenCertInput{
+						Type:             "intermediate",
+						CommonName:       cn,
+						Dir:              path,
+						DaysDuration:     intermediateDays,
+						IssuerCert:       root.Certificate,
+						IssuerPrivateKey: root.PrivateKey,
 					}
+
+					if i != 0 {
+						// If the intermediate is not the first one in the chain sign it with the previous one.
+						input.IssuerCert = certs[i].Certificate
+						input.IssuerPrivateKey = certs[i].PrivateKey
+					}
+
+					// If the intermediate is the first one in the chain sign it with the root CA.
+					out, err := cert.GenCert(input)
+					if err != nil {
+						logger.Error().Err(err).Msgf("failed to generate an intermediate CA cn: %s", cn)
+						return err
+					}
+					certs = append(certs, out)
+					logger.Debug().Msgf("Generated successfully an intermediate CA cn: %s  location: %s", cn, out.FileName)
 				default:
 					return errors.Errorf("unsupported intermediate hierarchy type: %s", intermediatesHierarchy)
 				}
@@ -85,14 +124,26 @@ var (
 
 			// Sign the leaf client/server certificate with last certificate in the chain.
 			last := certs[len(certs)-1]
-			if err = cert.GenServerCert(last.Certificate, last.PrivateKey, certCn, path, certDays); err != nil {
+			out, err := cert.GenCert(&cert.GenCertInput{
+				Type:             "leaf",
+				CommonName:       certCn,
+				Dir:              path,
+				DaysDuration:     certDays,
+				IssuerCert:       last.Certificate,
+				IssuerPrivateKey: last.PrivateKey,
+			})
+			if err != nil {
+				logger.Error().Err(err).Msgf("failed to generate an server certificate cn: %s", certCn)
 				return err
 			}
+			logger.Debug().Msgf("Generated successfully a client/server certificate cn: %s  location: %s", certCn, out.FileName)
 
 			// Export the CA chain to a file. Chain will contain root and all the intermediate certificates only.
 			if err = cert.ExportPemChain(certs, path, "ca-chain.cert"); err != nil {
+				logger.Error().Err(err).Msg("failed to to export the CA chain")
 				return err
 			}
+			logger.Debug().Msgf("Exported successfully a CA chain to: %s", filepath.Join(path, "ca-chain.cert"))
 			return nil
 		},
 	}

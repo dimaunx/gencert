@@ -14,12 +14,12 @@ func CreateDir(path string) error {
 		return err
 	}
 
-	certsPath := filepath.Join(currDir, path)
-	if _, err = os.Stat(certsPath); os.IsNotExist(err) {
-		if err = os.MkdirAll(certsPath, os.ModePerm); err != nil {
+	fullPath := filepath.Join(currDir, path)
+	if _, err = os.Stat(fullPath); os.IsNotExist(err) {
+		if err = os.MkdirAll(fullPath, os.ModePerm); err != nil {
 			return err
 		}
 		return nil
 	}
-	return errors.Errorf("directory: %s already exists", certsPath)
+	return errors.Errorf("directory: %s already exists", fullPath)
 }
