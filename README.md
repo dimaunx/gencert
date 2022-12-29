@@ -1,4 +1,6 @@
-[![Test](https://github.com/dimaunx/gencert/actions/workflows/test.yaml/badge.svg)](https://github.com/dimaunx/gencert/actions/workflows/test.yaml) [![Go Report](https://goreportcard.com/badge/github.com/dimaunx/gencert)](https://goreportcard.com/badge/github.com/dimaunx/gencert) [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![Test](https://github.com/dimaunx/gencert/actions/workflows/test.yaml/badge.svg)](https://github.com/dimaunx/gencert/actions/workflows/test.yaml) 
+[![Go Report](https://goreportcard.com/badge/github.com/dimaunx/gencert)](https://goreportcard.com/badge/github.com/dimaunx/gencert) 
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
 # gencert
 
