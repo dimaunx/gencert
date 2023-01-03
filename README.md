@@ -26,7 +26,13 @@ The generated files are especially useful when testing code that deals with cert
 
 Binaries for Linux, Windows and Mac are available as tarballs on the [release] page.
 
-### Build on Mac or Linux.
+If you have go installed.
+
+```shell
+go install github.com/dimaunx/gencert@latest
+```
+
+### Build manually on Mac or Linux.
 
 ```
 sh -c "$(curl -sL https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
