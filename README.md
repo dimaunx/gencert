@@ -56,7 +56,7 @@ gencert create -v
 Above command is equivalent to:
 
 ```shell
-gencert create -v --path ca01 --can-cn ca01 --ca-days 365 --int-num 1 --int-hierarchy forest --int-days 364 --cert-cn test.example.com --cert-days 363
+gencert create -v --path ca01 --ca-cn ca01 --ca-days 365 --int-num 1 --int-hierarchy forest --int-days 364 --cert-cn test.example.com --cert-days 363
 ```
 
 The command will generate in a local `ca01` folder a root CA, intermediate CA, one leaf client/server certificate
